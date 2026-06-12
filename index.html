@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control Panel</title>
+<style>
+/* ============================================================
+   CONTROL PANEL — Salesforce Lightning Design System Stil
+   Systemschrift statt Google Fonts (offline-fähig, file://)
+   ============================================================ */
+:root{
+  --blue:#0176D3; --blue-dark:#014486; --blue-bg:#EEF4FF;
+  --red:#C23934; --yellow:#FFB75D; --green:#2E844A;
+  --gray-bg:#F3F3F3; --card:#FFFFFF; --border:#E5E5E5;
+  --text:#181818; --text-weak:#706E6B;
+  --shadow:0 2px 4px rgba(0,0,0,.08);
+  --radius:6px;
+  --overdue-bg:#FDEDEC; --today-bg:#FFF3E6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--gray-bg); color:var(--text); font-size:13px; line-height:1.45;
+}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit}
+
+/* ---------- Header ---------- */
+header{
+  background:var(--card); border-bottom:1px solid var(--border);
+  padding:8px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  position:sticky; top:0; z-index:50; box-shadow:var(--shadow);
+}
+header h1{font-size:17px; font-weight:700; color:var(--blue-dark); white-space:nowrap}
+.header-meta{color:var(--text-weak); font-size:12px; white-space:nowrap}
+.badge-today{
+  background:var(--red); color:#fff; border-radius:10px; padding:1px 8px;
+  font-size:11px; font-weight:700;
+}
+.badge-today.zero{background:var(--green)}
+.spacer{flex:1}
+.btn{
+  border:1px solid var(--border); background:var(--card); color:var(--blue);
+  border-radius:var(--radius); padding:5px 12px; font-weight:600; font-size:12px;
+}
+.btn:hover{background:var(--blue-bg)}
+.btn-primary{background:var(--blue); border-color:var(--blue); color:#fff}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-danger{color:var(--red); border-color:var(--red)}
+.btn-danger:hover{background:var(--overdue-bg)}
+.toggle{display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+.toggle button{border:none; background:var(--card); padding:5px 12px; font-size:12px; font-weight:600; color:var(--text-weak)}
+.toggle button.active{background:var(--blue); color:#fff}
+
+/* ---------- Toolbar (Listenansicht) ---------- */
+.toolbar{
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  padding:8px 16px;
+}
+.toolbar input,.toolbar select{
+  border:1px solid var(--border); border-radius:var(--radius);
+  padding:5px 8px; background:var(--card); font-size:12px;
+}
+.toolbar input[type=search]{min-width:200px; flex:1; max-width:340px}
+
+/* ---------- Kanban ---------- */
+.kanban{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  padding:10px 16px 24px; align-items:start;
+}
+.col{
+  background:#ECEBEA; border-radius:var(--radius); padding:8px;
+  min-height:140px;
+}
+.col.dragover{outline:2px dashed var(--blue); outline-offset:-2px; background:var(--blue-bg)}
+.col-head{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+  color:var(--text-weak); padding:2px 4px 8px;
+}
+.col-count{
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:0 8px; font-size:11px; color:var(--text);
+}
+
+/* ---------- Ticket-Card ---------- */
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  border-left:4px solid var(--border);
+  box-shadow:var(--shadow); padding:8px; margin-bottom:8px; cursor:pointer;
+  position:relative;
+}
+.card:hover{box-shadow:0 3px 8px rgba(0,0,0,.15)}
+.card.dragging{opacity:.4}
+.card .title{font-weight:700; font-size:13px; margin-bottom:2px; word-break:break-word}
+.card .desc{color:var(--text-weak); font-size:12px; max-height:34px; overflow:hidden; margin-bottom:4px}
+.card .meta{display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:11px}
+.card select.quick-status{
+  margin-top:6px; width:100%; font-size:11px; padding:2px 4px;
+  border:1px solid var(--border); border-radius:4px; background:var(--gray-bg);
+  display:none; /* nur auf Touch/Schmal sichtbar — Fallback für Drag&Drop */
+}
+.prio-hoch{border-left-color:var(--red)}
+.prio-mittel{border-left-color:var(--yellow)}
+.prio-niedrig{border-left-color:var(--green)}
+.pill{border-radius:10px; padding:0 7px; font-weight:700; color:#fff; font-size:11px}
+.pill.hoch{background:var(--red)} .pill.mittel{background:var(--yellow); color:#5a3b00} .pill.niedrig{background:var(--green)}
+.tag{background:var(--blue-bg); color:var(--blue-dark); border-radius:10px; padding:0 7px; font-size:11px}
+.deadline{color:var(--text-weak)}
+.jira{color:var(--blue); text-decoration:none; font-weight:600}
+.jira:hover{text-decoration:underline}
+
+/* Deadline-Highlights (nur für nicht-erledigte Tickets) */
+.due-today{background:var(--today-bg)}
+.overdue{background:var(--overdue-bg)}
+.overdue .deadline,.row.overdue td .deadline{color:var(--red); font-weight:700}
+.due-today .deadline{color:#B25D00; font-weight:700}
+
+/* Erledigt / Erledigt JF: ausgegraut, JF stärker */
+.done{opacity:.65}
+.done .title{text-decoration:line-through}
+.done-jf{opacity:.4}
+
+/* ---------- Listenansicht ---------- */
+.list-wrap{padding:0 16px 24px; overflow-x:auto}
+table{width:100%; border-collapse:collapse; background:var(--card); box-shadow:var(--shadow); border-radius:var(--radius); overflow:hidden}
+th,td{padding:7px 10px; text-align:left; border-bottom:1px solid var(--border); font-size:12px; vertical-align:top}
+th{background:#FAFAF9; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-weak); white-space:nowrap; user-select:none}
+th.sortable{cursor:pointer}
+th.sortable:hover{color:var(--blue)}
+th .arrow{font-size:10px}
+tr.row{cursor:pointer}
+tr.row:hover td{background:var(--blue-bg)}
+tr.row.due-today td{background:var(--today-bg)}
+tr.row.overdue td{background:var(--overdue-bg)}
+tr.row.done td{opacity:.65}
+tr.row.done-jf td{opacity:.4}
+.empty{padding:24px; text-align:center; color:var(--text-weak)}
+
+/* ---------- Modal ---------- */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+  align-items:flex-start; justify-content:center; z-index:100; padding:24px 12px; overflow-y:auto;
+}
+.overlay.open{display:flex}
+.modal{
+  background:var(--card); border-radius:8px; width:100%; max-width:560px;
+  box-shadow:0 8px 30px rgba(0,0,0,.3);
+}
+.modal-head{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+}
+.modal-head h2{font-size:15px; color:var(--blue-dark)}
+.modal-close{border:none; background:none; font-size:18px; color:var(--text-weak)}
+.modal form{padding:12px 16px; display:grid; gap:10px}
+.field label{display:block; font-size:11px; font-weight:700; color:var(--text-weak); margin-bottom:3px}
+.field label .req{color:var(--red)}
+.field input,.field select,.field textarea{
+  width:100%; border:1px solid var(--border); border-radius:var(--radius);
+  padding:6px 8px; font-size:13px;
+}
+.field textarea{resize:vertical; min-height:56px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--blue); outline-offset:-1px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.modal-foot{display:flex; gap:8px; justify-content:flex-end; padding:0 16px 14px}
+.modal-foot .btn-danger{margin-right:auto}
+
+/* ---------- Responsiv ---------- */
+@media (max-width:980px){ .kanban{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:560px){
+  .kanban{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .card select.quick-status{display:block} /* Drag&Drop-Fallback auf Mobile */
+  header h1{font-size:15px}
+}
+@media (pointer:coarse){ .card select.quick-status{display:block} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Control Panel</h1>
+  <span class="header-meta" id="todayDate"></span>
+  <span class="badge-today" id="dueTodayBadge">0 heute fällig</span>
+  <span class="spacer"></span>
+  <div class="toggle">
+    <button id="btnKanban" class="active">Kanban</button>
+    <button id="btnList">Liste</button>
+  </div>
+  <button class="btn" id="btnExport">Export</button>
+  <button class="btn" id="btnImport">Import</button>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <button class="btn btn-primary" id="btnNew">+ Neues Ticket</button>
+</header>
+
+<!-- Toolbar: nur in Listenansicht sichtbar -->
+<div class="toolbar" id="toolbar" hidden>
+  <input type="search" id="search" placeholder="Suche in Titel + Beschreibung… ">
+  <select id="filterStatus">
+    <option value="">Status: Alle</option>
+  </select>
+  <select id="filterPrio">
+    <option value="">Priorität: Alle</option>
+    <option>Hoch</option><option>Mittel</option><option>Niedrig</option>
+  </select>
+  <select id="filterCat">
+    <option value="">Kategorie: Alle</option>
+  </select>
+</div>
+
+<main>
+  <div class="kanban" id="kanban"></div>
+  <div class="list-wrap" id="listWrap" hidden>
+    <table>
+      <thead>
+        <tr>
+          <th>Titel</th>
+          <th class="sortable" data-sort="status">Status <span class="arrow"></span></th>
+          <th class="sortable" data-sort="prio">Priorität <span class="arrow"></span></th>
+          <th class="sortable" data-sort="deadline">Deadline <span class="arrow"></span></th>
+          <th>Kategorien</th>
+          <th>Jira</th>
+        </tr>
+      </thead>
+      <tbody id="listBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Modal: Ticket erstellen / bearbeiten -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 id="modalTitle">Neues Ticket</h2>
+      <button class="modal-close" id="btnClose" aria-label="Schließen">✕</button>
+    </div>
+    <form id="ticketForm">
+      <div class="field">
+        <label>Titel <span class="req">*</span></label>
+        <input id="fTitle" required maxlength="200">
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Status <span class="req">*</span></label>
+          <select id="fStatus" required></select>
+        </div>
+        <div class="field">
+          <label>Priorität <span class="req">*</span></label>
+          <select id="fPrio" required>
+            <option>Hoch</option><option selected>Mittel</option><option>Niedrig</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Deadline <span class="req">*</span></label>
+        <input type="date" id="fDeadline" required>
+      </div>
+      <div class="field">
+        <label>Beschreibung <span class="req">*</span></label>
+        <textarea id="fDesc" required></textarea>
+      </div>
+      <div class="field">
+        <label>Jira-Link (optional)</label>
+        <input type="url" id="fJira" placeholder="https://…">
+      </div>
+      <div class="field">
+        <label>Kommentar / Notiz (optional)</label>
+        <textarea id="fNote"></textarea>
+      </div>
+      <div class="field">
+        <label>Kategorien (optional, Komma-getrennt)</label>
+        <input id="fCats" placeholder="z.B. Backend, Reporting">
+      </div>
+    </form>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="btnDelete" hidden>Löschen</button>
+      <button class="btn" id="btnCancel">Abbrechen</button>
+      <button class="btn btn-primary" id="btnSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATEN & STATE
+   ============================================================ */
+const LS_KEY = 'controlPanel.tickets.v1';
+const STATUSES = ['Offen', 'In Arbeit', 'Erledigt', 'Erledigt JF'];
+const DONE = ['Erledigt', 'Erledigt JF'];
+const PRIO_ORDER = { 'Hoch': 0, 'Mittel': 1, 'Niedrig': 2 };
+
+let tickets = [];
+let editingId = null; // null = neues Ticket
+let view = 'kanban';
+let sort = { key: 'deadline', dir: 1 }; // default: Deadline aufsteigend
+
+/* ---------- Laden / Speichern ---------- */
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) { tickets = JSON.parse(raw); return; }
+  } catch (e) { console.warn('localStorage nicht lesbar:', e); }
+  tickets = demoTickets(); // Erster Start: Demo-Daten
+  save();
+}
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(tickets)); }
+  catch (e) { alert('Speichern fehlgeschlagen (localStorage voll oder blockiert).'); }
+}
+function demoTickets() {
+  const d = (offset) => {
+    const t = new Date(); t.setDate(t.getDate() + offset);
+    return t.toISOString().slice(0, 10);
+  };
+  return [
+    { id: uid(), title: 'Quartalsreport vorbereiten', status: 'Offen', prio: 'Hoch', deadline: d(0), desc: 'Zahlen aus dem CRM ziehen und Folien aktualisieren.', jira: '', note: '', cats: ['Reporting'] },
+    { id: uid(), title: 'Code-Review Feature X', status: 'In Arbeit', prio: 'Mittel', deadline: d(2), desc: 'PR #341 reviewen, Fokus auf Fehlerbehandlung.', jira: 'https://example.atlassian.net/browse/PROJ-341', note: 'Rückfrage an Anna offen.', cats: ['Backend', 'Review'] },
+    { id: uid(), title: 'Alte Datenbank-Backups löschen', status: 'Offen', prio: 'Niedrig', deadline: d(-2), desc: 'Backups älter als 90 Tage entfernen — vorher Freigabe einholen.', jira: '', note: '', cats: ['Ops'] },
+    { id: uid(), title: 'Onboarding-Doku schreiben', status: 'Erledigt', prio: 'Mittel', deadline: d(-5), desc: 'Setup-Guide für neue Teammitglieder.', jira: '', note: '', cats: ['Doku'] },
+    { id: uid(), title: 'Lizenzverlängerung geklärt', status: 'Erledigt JF', prio: 'Hoch', deadline: d(-10), desc: 'Mit Einkauf abgestimmt, Vertrag verlängert.', jira: '', note: 'Für JF: Kostensteigerung 8% erwähnen.', cats: ['Admin'] }
+  ];
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ---------- Datum-Helfer ---------- */
+function todayStr() {
+  const t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return d + '.' + m + '.' + y;
+}
+/* Deadline-Klasse: nur für nicht-erledigte Tickets */
+function deadlineClass(t) {
+  if (DONE.includes(t.status)) return '';
+  if (t.deadline < todayStr()) return 'overdue';
+  if (t.deadline === todayStr()) return 'due-today';
+  return '';
+}
+function doneClass(t) {
+  if (t.status === 'Erledigt JF') return 'done done-jf';
+  if (t.status === 'Erledigt') return 'done';
+  return '';
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function render() {
+  renderHeader();
+  if (view === 'kanban') renderKanban(); else renderList();
+}
+
+function renderHeader() {
+  document.getElementById('todayDate').textContent =
+    new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const n = tickets.filter(t => !DONE.includes(t.status) && t.deadline === todayStr()).length;
+  const badge = document.getElementById('dueTodayBadge');
+  badge.textContent = n + ' heute fällig';
+  badge.classList.toggle('zero', n === 0);
+}
+
+/* ---------- Kanban ---------- */
+function renderKanban() {
+  const root = document.getElementById('kanban');
+  root.innerHTML = '';
+  STATUSES.forEach(status => {
+    const col = document.createElement('div');
+    col.className = 'col';
+    col.dataset.status = status;
+    const items = tickets.filter(t => t.status === status)
+      .sort((a, b) => a.deadline.localeCompare(b.deadline));
+    col.innerHTML = '<div class="col-head"><span>' + status + '</span><span class="col-count">' + items.length + '</span></div>';
+    items.forEach(t => col.appendChild(cardEl(t)));
+
+    // Drop-Ziel
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('dragover'); });
+    col.addEventListener('dragleave', () => col.classList.remove('dragover'));
+    col.addEventListener('drop', e => {
+      e.preventDefault(); col.classList.remove('dragover');
+      const id = e.dataTransfer.getData('text/plain');
+      const t = tickets.find(x => x.id === id);
+      if (t && t.status !== status) { t.status = status; save(); render(); }
+    });
+    root.appendChild(col);
+  });
+}
+
+function cardEl(t) {
+  const el = document.createElement('div');
+  el.className = ['card', 'prio-' + t.prio.toLowerCase(), deadlineClass(t), doneClass(t)].join(' ').trim();
+  el.draggable = true;
+  el.dataset.id = t.id;
+
+  const tags = (t.cats || []).map(c => '<span class="tag">' + esc(c) + '</span>').join('');
+  const jira = t.jira ? '<a class="jira" href="' + esc(t.jira) + '" target="_blank" rel="noopener">Jira ↗</a>' : '';
+  el.innerHTML =
+    '<div class="title">' + esc(t.title) + '</div>' +
+    '<div class="desc">' + esc(t.desc) + '</div>' +
+    '<div class="meta">' +
+      '<span class="pill ' + t.prio.toLowerCase() + '">' + t.prio + '</span>' +
+      '<span class="deadline">📅 ' + fmtDate(t.deadline) + '</span>' +
+      tags + jira +
+    '</div>' +
+    '<select class="quick-status" title="Status ändern">' +
+      STATUSES.map(s => '<option' + (s === t.status ? ' selected' : '') + '>' + s + '</option>').join('') +
+    '</select>';
+
+  el.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', t.id);
+    el.classList.add('dragging');
+  });
+  el.addEventListener('dragend', () => el.classList.remove('dragging'));
+  el.addEventListener('click', e => {
+    if (e.target.closest('a') || e.target.closest('select')) return; // Link/Select nicht abfangen
+    openModal(t.id);
+  });
+  // Mobile-Fallback: Status per Dropdown statt Drag&Drop
+  el.querySelector('.quick-status').addEventListener('change', e => {
+    t.status = e.target.value; save(); render();
+  });
+  return el;
+}
+
+/* ---------- Liste ---------- */
+function renderList() {
+  const body = document.getElementById('listBody');
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fp = document.getElementById('filterPrio').value;
+  const fc = document.getElementById('filterCat').value;
+
+  let rows = tickets.filter(t =>
+    (!fs || t.status === fs) &&
+    (!fp || t.prio === fp) &&
+    (!fc || (t.cats || []).includes(fc)) &&
+    (!q || t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q))
+  );
+
+  rows.sort((a, b) => {
+    let v = 0;
+    if (sort.key === 'deadline') v = a.deadline.localeCompare(b.deadline);
+    if (sort.key === 'prio') v = PRIO_ORDER[a.prio] - PRIO_ORDER[b.prio];
+    if (sort.key === 'status') v = STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status);
+    return v * sort.dir;
+  });
+
+  // Sortier-Pfeile
+  document.querySelectorAll('th.sortable').forEach(th => {
+    th.querySelector('.arrow').textContent = th.dataset.sort === sort.key ? (sort.dir === 1 ? '▲' : '▼') : '';
+  });
+
+  body.innerHTML = '';
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="6" class="empty">Keine Tickets gefunden.</td></tr>';
+    return;
+  }
+  rows.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.className = ['row', deadlineClass(t), doneClass(t)].join(' ').trim();
+    tr.innerHTML =
+      '<td><strong>' + esc(t.title) + '</strong><br><span style="color:var(--text-weak)">' + esc(t.desc) + '</span></td>' +
+      '<td>' + t.status + '</td>' +
+      '<td><span class="pill ' + t.prio.toLowerCase() + '">' + t.prio + '</span></td>' +
+      '<td><span class="deadline">' + fmtDate(t.deadline) + '</span></td>' +
+      '<td>' + (t.cats || []).map(c => '<span class="tag">' + esc(c) + '</span>').join(' ') + '</td>' +
+      '<td>' + (t.jira ? '<a class="jira" href="' + esc(t.jira) + '" target="_blank" rel="noopener">öffnen ↗</a>' : '') + '</td>';
+    tr.addEventListener('click', e => {
+      if (e.target.closest('a')) return;
+      openModal(t.id);
+    });
+    body.appendChild(tr);
+  });
+  refreshCatFilter(fc);
+}
+
+function refreshCatFilter(current) {
+  const sel = document.getElementById('filterCat');
+  const cats = [...new Set(tickets.flatMap(t => t.cats || []))].sort();
+  sel.innerHTML = '<option value="">Kategorie: Alle</option>' +
+    cats.map(c => '<option' + (c === current ? ' selected' : '') + '>' + esc(c) + '</option>').join('');
+}
+
+/* XSS-Schutz für nutzergenerierte Inhalte */
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ============================================================
+   MODAL (Erstellen / Bearbeiten / Löschen)
+   ============================================================ */
+const overlay = document.getElementById('overlay');
+
+function openModal(id) {
+  editingId = id || null;
+  const t = id ? tickets.find(x => x.id === id) : null;
+  document.getElementById('modalTitle').textContent = t ? 'Ticket bearbeiten' : 'Neues Ticket';
+  document.getElementById('btnDelete').hidden = !t;
+  document.getElementById('fTitle').value = t ? t.title : '';
+  document.getElementById('fStatus').value = t ? t.status : 'Offen';
+  document.getElementById('fPrio').value = t ? t.prio : 'Mittel';
+  document.getElementById('fDeadline').value = t ? t.deadline : todayStr();
+  document.getElementById('fDesc').value = t ? t.desc : '';
+  document.getElementById('fJira').value = t ? (t.jira || '') : '';
+  document.getElementById('fNote').value = t ? (t.note || '') : '';
+  document.getElementById('fCats').value = t ? (t.cats || []).join(', ') : '';
+  overlay.classList.add('open');
+  document.getElementById('fTitle').focus();
+}
+function closeModal() { overlay.classList.remove('open'); editingId = null; }
+
+function saveTicket() {
+  const form = document.getElementById('ticketForm');
+  if (!form.reportValidity()) return; // native Pflichtfeld-Validierung
+  const data = {
+    title: document.getElementById('fTitle').value.trim(),
+    status: document.getElementById('fStatus').value,
+    prio: document.getElementById('fPrio').value,
+    deadline: document.getElementById('fDeadline').value,
+    desc: document.getElementById('fDesc').value.trim(),
+    jira: document.getElementById('fJira').value.trim(),
+    note: document.getElementById('fNote').value.trim(),
+    cats: document.getElementById('fCats').value.split(',').map(s => s.trim()).filter(Boolean)
+  };
+  if (editingId) {
+    Object.assign(tickets.find(x => x.id === editingId), data);
+  } else {
+    tickets.push(Object.assign({ id: uid() }, data));
+  }
+  save(); closeModal(); render();
+}
+
+function deleteTicket() {
+  if (!editingId) return;
+  const t = tickets.find(x => x.id === editingId);
+  if (confirm('Ticket "' + t.title + '" wirklich löschen?')) {
+    tickets = tickets.filter(x => x.id !== editingId);
+    save(); closeModal(); render();
+  }
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(tickets, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'control-panel-export-' + todayStr() + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!Array.isArray(data)) throw new Error('Kein Array');
+      // Minimale Validierung pro Ticket
+      tickets = data.filter(t => t && t.title && STATUSES.includes(t.status))
+        .map(t => Object.assign({ id: uid(), cats: [], jira: '', note: '' }, t));
+      save(); render();
+      alert(tickets.length + ' Tickets importiert. Achtung: bestehende Daten wurden ersetzt.');
+    } catch (e) {
+      alert('Import fehlgeschlagen: keine gültige JSON-Datei.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   EVENTS / INIT
+   ============================================================ */
+function setView(v) {
+  view = v;
+  document.getElementById('btnKanban').classList.toggle('active', v === 'kanban');
+  document.getElementById('btnList').classList.toggle('active', v === 'list');
+  document.getElementById('kanban').hidden = v !== 'kanban';
+  document.getElementById('toolbar').hidden = v !== 'list';
+  document.getElementById('listWrap').hidden = v !== 'list';
+  render();
+}
+
+document.getElementById('btnKanban').onclick = () => setView('kanban');
+document.getElementById('btnList').onclick = () => setView('list');
+document.getElementById('btnNew').onclick = () => openModal(null);
+document.getElementById('btnClose').onclick = closeModal;
+document.getElementById('btnCancel').onclick = closeModal;
+document.getElementById('btnSave').onclick = saveTicket;
+document.getElementById('btnDelete').onclick = deleteTicket;
+document.getElementById('btnExport').onclick = exportJSON;
+document.getElementById('btnImport').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').addEventListener('change', e => {
+  if (e.target.files[0]) {
+    if (confirm('Import ersetzt ALLE aktuellen Tickets. Vorher exportieren?')) exportJSON();
+    importJSON(e.target.files[0]);
+  }
+  e.target.value = '';
+});
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+['search', 'filterStatus', 'filterPrio', 'filterCat'].forEach(id =>
+  document.getElementById(id).addEventListener('input', renderList));
+
+document.querySelectorAll('th.sortable').forEach(th =>
+  th.addEventListener('click', () => {
+    if (sort.key === th.dataset.sort) sort.dir *= -1;
+    else { sort.key = th.dataset.sort; sort.dir = 1; }
+    renderList();
+  }));
+
+// Keyboard-Shortcut: N = neues Ticket (wenn kein Eingabefeld fokussiert)
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  if (e.key === 'Escape' && overlay.classList.contains('open')) { closeModal(); return; }
+  if ((e.key === 'n' || e.key === 'N') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag) && !overlay.classList.contains('open')) {
+    e.preventDefault(); openModal(null);
+  }
+});
+
+// Status-Dropdown im Modal befüllen
+document.getElementById('fStatus').innerHTML = STATUSES.map(s => '<option>' + s + '</option>').join('');
+// Status-Filter in Toolbar befüllen
+document.getElementById('filterStatus').innerHTML =
+  '<option value="">Status: Alle</option>' + STATUSES.map(s => '<option>' + s + '</option>').join('');
+
+load();
+setView('kanban');
+</script>
+
+<!-- ============================================================
+DEPLOYMENT-OPTIONEN
+
+GITHUB PAGES:
+Repo erstellen, index.html pushen, dann unter Settings → Pages den
+Branch "main" als Quelle wählen. Die App ist danach unter
+https://USERNAME.github.io/REPO/ erreichbar — kostenlos, kein Build nötig.
+
+VERCEL:
+Auf vercel.com das GitHub-Repo importieren oder die Datei per
+"vercel" CLI deployen (Framework: "Other"). Vercel erkennt statische
+Dateien automatisch und liefert sie über ein globales CDN aus.
+
+NETLIFY:
+Auf app.netlify.com die index.html einfach per Drag & Drop in den
+"Deploy"-Bereich ziehen — fertig. Alternativ Repo verbinden für
+automatische Deploys bei jedem Push.
+
+WICHTIG: localStorage ist an Browser + Origin gebunden. Nach einem
+Wechsel von file:// zu einer gehosteten URL startet die App leer —
+vorher per Export-Button sichern, danach importieren.
+============================================================ -->
+</body>
+</html>
