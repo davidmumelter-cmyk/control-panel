@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control Panel</title>
+<style>
+/* ============================================================
+   CONTROL PANEL v2 — Salesforce Lightning Stil, Single-User
+   ============================================================ */
+:root{
+  --blue:#0176D3; --blue-dark:#014486; --blue-bg:#EEF4FF;
+  --red:#C23934; --yellow:#FFB75D; --green:#2E844A;
+  --gray-bg:#F3F3F3; --card:#FFFFFF; --border:#E5E5E5;
+  --text:#181818; --text-weak:#706E6B;
+  --shadow:0 2px 4px rgba(0,0,0,.08);
+  --radius:6px;
+  --overdue-bg:#FDEDEC; --today-bg:#FFF3E6;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+/* FIX v2: hidden-Attribut muss display:grid/flex etc. immer schlagen
+   (Ursache des Listenansicht-Bugs in v1) */
+[hidden]{display:none!important}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--gray-bg); color:var(--text); font-size:13px; line-height:1.45;
+}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit}
+
+/* ---------- Header ---------- */
+header{
+  background:var(--card); border-bottom:1px solid var(--border);
+  padding:8px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  position:sticky; top:0; z-index:50; box-shadow:var(--shadow);
+}
+header h1{font-size:17px; font-weight:700; color:var(--blue-dark); white-space:nowrap}
+.header-meta{color:var(--text-weak); font-size:12px; white-space:nowrap}
+.badge-today{
+  background:var(--red); color:#fff; border-radius:10px; padding:1px 10px;
+  font-size:11px; font-weight:700; border:2px solid transparent; cursor:pointer;
+}
+.badge-today.zero{background:var(--green)}
+.badge-today.filter-on{border-color:var(--blue-dark); box-shadow:0 0 0 2px var(--blue-bg)}
+.spacer{flex:1}
+.btn{
+  border:1px solid var(--border); background:var(--card); color:var(--blue);
+  border-radius:var(--radius); padding:5px 12px; font-weight:600; font-size:12px;
+}
+.btn:hover{background:var(--blue-bg)}
+.btn-primary{background:var(--blue); border-color:var(--blue); color:#fff}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-danger{color:var(--red); border-color:var(--red)}
+.btn-danger:hover{background:var(--overdue-bg)}
+.btn-icon{padding:5px 9px}
+.toggle{display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden}
+.toggle button{border:none; background:var(--card); padding:5px 12px; font-size:12px; font-weight:600; color:var(--text-weak)}
+.toggle button.active{background:var(--blue); color:#fff}
+
+/* ---------- Export-Erinnerung ---------- */
+.banner{
+  background:var(--today-bg); border-bottom:1px solid #f0d9b8;
+  padding:6px 16px; display:flex; gap:10px; align-items:center; font-size:12px;
+}
+.banner button{margin-left:auto}
+
+/* ---------- Toolbars ---------- */
+.toolbar{
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  padding:8px 16px 0;
+}
+.toolbar input,.toolbar select{
+  border:1px solid var(--border); border-radius:var(--radius);
+  padding:5px 8px; background:var(--card); font-size:12px;
+}
+.toolbar input[type=search]{min-width:180px; flex:1; max-width:320px}
+.toolbar .lbl{font-size:11px; color:var(--text-weak); font-weight:700}
+.chips{display:flex; gap:6px; flex-wrap:wrap}
+.chip{
+  border:1px solid var(--border); background:var(--card); border-radius:12px;
+  padding:3px 11px; font-size:11px; font-weight:600; color:var(--text-weak);
+}
+.chip:hover{border-color:var(--blue); color:var(--blue)}
+.chip.active{background:var(--blue); border-color:var(--blue); color:#fff}
+
+/* ---------- Kanban ---------- */
+.kanban{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  padding:10px 16px 24px; align-items:start;
+}
+.col{background:#ECEBEA; border-radius:var(--radius); padding:8px; min-height:140px}
+.col.dragover{outline:2px dashed var(--blue); outline-offset:-2px; background:var(--blue-bg)}
+.col-head{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+  color:var(--text-weak); padding:2px 4px 8px;
+}
+.col-count{background:var(--card); border:1px solid var(--border); border-radius:10px; padding:0 8px; font-size:11px; color:var(--text)}
+
+/* ---------- Ticket-Card ---------- */
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  border-left:4px solid var(--border);
+  box-shadow:var(--shadow); padding:8px; margin-bottom:8px; cursor:pointer;
+  position:relative;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+.card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 14px rgba(0,0,0,.18);
+  border-color:var(--blue);
+}
+.card.dragging{opacity:.4}
+.card .title{font-weight:700; font-size:13px; margin-bottom:2px; word-break:break-word; padding-right:18px}
+.card .desc{color:var(--text-weak); font-size:12px; max-height:34px; overflow:hidden; margin-bottom:4px}
+body.compact .card .desc{display:none}
+.card .meta{display:flex; gap:5px; flex-wrap:wrap; align-items:center; font-size:11px}
+.card-foot{display:flex; justify-content:space-between; align-items:flex-end; gap:6px; margin-top:4px}
+.card select.quick-status{
+  font-size:11px; padding:2px 4px; flex:1;
+  border:1px solid var(--border); border-radius:4px; background:var(--gray-bg);
+  display:none; /* Fallback für Drag&Drop auf Touch */
+}
+/* Eskalation: rotes Ausrufezeichen rechts oben bei überfällig */
+.escal{
+  position:absolute; top:6px; right:6px;
+  width:16px; height:16px; border-radius:50%;
+  background:var(--red); color:#fff; font-weight:800; font-size:11px;
+  display:flex; align-items:center; justify-content:center;
+}
+.prio-hoch{border-left-color:var(--red)}
+.prio-mittel{border-left-color:var(--yellow)}
+.prio-niedrig{border-left-color:var(--green)}
+.pill{border-radius:10px; padding:0 7px; font-weight:700; color:#fff; font-size:11px; white-space:nowrap}
+.pill.hoch{background:var(--red)} .pill.mittel{background:var(--yellow); color:#5a3b00} .pill.niedrig{background:var(--green)}
+.tag{border-radius:10px; padding:0 7px; font-size:11px; font-weight:600; white-space:nowrap}
+.deadline{color:var(--text-weak); white-space:nowrap}
+.jira{color:var(--blue); text-decoration:none; font-weight:700; font-size:11px; white-space:nowrap}
+.jira:hover{text-decoration:underline}
+
+.due-today{background:var(--today-bg)}
+.overdue{background:var(--overdue-bg)}
+.due-today .deadline{color:#B25D00; font-weight:700}
+.overdue .deadline{color:var(--red); font-weight:700}
+.done{opacity:.65}
+.done .title{text-decoration:line-through}
+.done-final{opacity:.4}
+
+/* ---------- Liste ---------- */
+.list-wrap{padding:10px 16px 24px; overflow-x:auto}
+table{width:100%; border-collapse:collapse; background:var(--card); box-shadow:var(--shadow); border-radius:var(--radius); overflow:hidden}
+th,td{padding:7px 10px; text-align:left; border-bottom:1px solid var(--border); font-size:12px; vertical-align:top}
+th{background:#FAFAF9; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-weak); white-space:nowrap; user-select:none}
+th.sortable{cursor:pointer}
+th.sortable:hover{color:var(--blue)}
+th .arrow{font-size:10px}
+tr.row{cursor:pointer}
+tr.row td{transition:background .1s}
+tr.row:hover td{background:var(--blue-bg)}
+tr.row.due-today td{background:var(--today-bg)}
+tr.row.overdue td{background:var(--overdue-bg)}
+tr.row.done td{opacity:.65}
+tr.row.done-final td{opacity:.4}
+.empty{padding:24px; text-align:center; color:var(--text-weak)}
+
+/* ---------- Modals ---------- */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+  align-items:flex-start; justify-content:center; z-index:100; padding:24px 12px; overflow-y:auto;
+}
+.overlay.open{display:flex}
+.modal{background:var(--card); border-radius:8px; width:100%; max-width:560px; box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.modal-head{display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border)}
+.modal-head h2{font-size:15px; color:var(--blue-dark)}
+.modal-close{border:none; background:none; font-size:18px; color:var(--text-weak)}
+.modal-body{padding:12px 16px; display:grid; gap:10px}
+.field label{display:block; font-size:11px; font-weight:700; color:var(--text-weak); margin-bottom:3px}
+.field label .req{color:var(--red)}
+.field input,.field select,.field textarea{
+  width:100%; border:1px solid var(--border); border-radius:var(--radius);
+  padding:6px 8px; font-size:13px;
+}
+.field textarea{resize:vertical; min-height:56px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--blue); outline-offset:-1px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.modal-foot{display:flex; gap:8px; justify-content:flex-end; padding:0 16px 14px}
+.modal-foot .btn-danger{margin-right:auto}
+
+/* Kategorie-Auswahl im Ticket-Modal */
+.cat-chips{display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; min-height:20px}
+.cat-chips .tag button{border:none; background:none; color:inherit; font-weight:800; margin-left:4px; padding:0; font-size:11px}
+.cat-add{display:flex; gap:6px}
+.cat-add select{flex:1}
+.cat-add input{flex:1}
+
+/* Kategorien-Verwaltung in Einstellungen */
+.cat-row{display:flex; gap:6px; align-items:center}
+.cat-row input[type=text]{flex:1}
+.cat-row input[type=color]{width:34px; height:28px; padding:1px; border:1px solid var(--border); border-radius:4px; background:var(--card); cursor:pointer}
+.cat-row .btn{padding:3px 8px}
+.settings-section{border-top:1px solid var(--border); padding-top:10px}
+.settings-section h3{font-size:12px; color:var(--blue-dark); margin-bottom:8px; text-transform:uppercase; letter-spacing:.03em}
+.set-row{display:flex; align-items:center; gap:8px; justify-content:space-between}
+.set-row label{font-size:12px}
+.set-row select,.set-row input[type=number]{border:1px solid var(--border); border-radius:var(--radius); padding:4px 6px; width:130px}
+
+/* ---------- Responsiv ---------- */
+@media (max-width:980px){ .kanban{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:560px){
+  .kanban{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .card select.quick-status{display:block}
+  header h1{font-size:15px}
+}
+@media (pointer:coarse){ .card select.quick-status{display:block} }
+@media (prefers-reduced-motion:reduce){ .card{transition:none} .card:hover{transform:none} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Control Panel</h1>
+  <span class="header-meta" id="todayDate"></span>
+  <button class="badge-today" id="dueTodayBadge" title="Klick: auf heute fällig filtern">0 heute fällig</button>
+  <span class="spacer"></span>
+  <select id="globalCat" title="Nach Kategorie filtern" style="border:1px solid var(--border);border-radius:var(--radius);padding:5px 8px;font-size:12px;max-width:180px"></select>
+  <div class="toggle">
+    <button id="btnKanban" class="active">Kanban</button>
+    <button id="btnList">Liste</button>
+  </div>
+  <button class="btn" id="btnExport">Export</button>
+  <button class="btn" id="btnImport">Import</button>
+  <input type="file" id="importFile" accept=".json,application/json" hidden>
+  <button class="btn btn-icon" id="btnSettings" title="Einstellungen">⚙</button>
+  <button class="btn btn-primary" id="btnNew">+ Neues Ticket</button>
+</header>
+
+<div class="banner" id="exportBanner" hidden>
+  <span>⚠ Letzter Export liegt länger zurück. localStorage ist kein Backup — jetzt sichern.</span>
+  <button class="btn" id="btnBannerExport">Jetzt exportieren</button>
+  <button class="btn" id="btnBannerDismiss">Später</button>
+</div>
+
+<!-- Kanban-Toolbar -->
+<div class="toolbar" id="kanbanBar">
+  <span class="lbl">Sortierung:</span>
+  <select id="kanbanSort">
+    <option value="deadline">Fälligkeit</option>
+    <option value="prio">Priorität</option>
+  </select>
+</div>
+
+<!-- Listen-Toolbar -->
+<div class="toolbar" id="listBar" hidden>
+  <input type="search" id="search" placeholder="Suche in Titel + Beschreibung…">
+  <select id="filterStatus"></select>
+  <select id="filterPrio">
+    <option value="">Priorität: Alle</option>
+    <option>Hoch</option><option>Mittel</option><option>Niedrig</option>
+  </select>
+  <div class="chips" id="quickChips">
+    <button class="chip" data-q="today">Heute fällig</button>
+    <button class="chip" data-q="overdue">Überfällig</button>
+    <button class="chip" data-q="week">Diese Woche</button>
+    <button class="chip" data-q="active">Aktiv</button>
+  </div>
+</div>
+
+<main>
+  <div class="kanban" id="kanban"></div>
+  <div class="list-wrap" id="listWrap" hidden>
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" data-sort="title">Titel <span class="arrow"></span></th>
+          <th class="sortable" data-sort="status">Status <span class="arrow"></span></th>
+          <th class="sortable" data-sort="prio">Priorität <span class="arrow"></span></th>
+          <th class="sortable" data-sort="deadline">Deadline <span class="arrow"></span></th>
+          <th>Kategorien</th>
+          <th>Jira</th>
+        </tr>
+      </thead>
+      <tbody id="listBody"></tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Ticket-Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 id="modalTitle">Neues Ticket</h2>
+      <button class="modal-close" data-close aria-label="Schließen">✕</button>
+    </div>
+    <form class="modal-body" id="ticketForm">
+      <div class="field">
+        <label>Titel <span class="req">*</span></label>
+        <input id="fTitle" required maxlength="200">
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Status <span class="req">*</span></label>
+          <select id="fStatus" required></select>
+        </div>
+        <div class="field">
+          <label>Priorität <span class="req">*</span></label>
+          <select id="fPrio" required>
+            <option>Hoch</option><option selected>Mittel</option><option>Niedrig</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Deadline <span class="req">*</span></label>
+        <input type="date" id="fDeadline" required>
+      </div>
+      <div class="field">
+        <label>Beschreibung <span class="req">*</span></label>
+        <textarea id="fDesc" required></textarea>
+      </div>
+      <div class="field">
+        <label>Jira-Link (optional)</label>
+        <input type="url" id="fJira" placeholder="https://…">
+      </div>
+      <div class="field">
+        <label>Kommentar / Notiz (optional)</label>
+        <textarea id="fNote"></textarea>
+      </div>
+      <div class="field">
+        <label>Kategorien</label>
+        <div class="cat-chips" id="catChips"></div>
+        <div class="cat-add">
+          <select id="catSelect"><option value="">+ aus Liste wählen…</option></select>
+          <input id="catNew" placeholder="Neue Kategorie…" maxlength="40">
+          <button type="button" class="btn" id="btnCatAdd">Anlegen</button>
+        </div>
+      </div>
+    </form>
+    <div class="modal-foot">
+      <button class="btn btn-danger" id="btnDelete" hidden>Löschen</button>
+      <button class="btn" data-close>Abbrechen</button>
+      <button class="btn btn-primary" id="btnSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Einstellungen-Modal -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2>Einstellungen</h2>
+      <button class="modal-close" data-close-settings aria-label="Schließen">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="set-row">
+        <label>Standardansicht beim Start</label>
+        <select id="setView"><option value="kanban">Kanban</option><option value="list">Liste</option></select>
+      </div>
+      <div class="set-row">
+        <label>Kanban-Standardsortierung</label>
+        <select id="setKanbanSort"><option value="deadline">Fälligkeit</option><option value="prio">Priorität</option></select>
+      </div>
+      <div class="set-row">
+        <label>„Erledigt" ausblenden nach (Tage, 0 = nie)</label>
+        <input type="number" id="setHideDone" min="0" max="365">
+      </div>
+      <div class="set-row">
+        <label>Export-Erinnerung alle (Tage, 0 = aus)</label>
+        <input type="number" id="setRemind" min="0" max="90">
+      </div>
+      <div class="set-row">
+        <label>Kompakte Kacheln (ohne Beschreibung)</label>
+        <input type="checkbox" id="setCompact">
+      </div>
+      <div class="settings-section">
+        <h3>Kategorien</h3>
+        <div id="catManager" style="display:grid;gap:6px"></div>
+        <div class="cat-add" style="margin-top:8px">
+          <input id="catManagerNew" placeholder="Neue Kategorie…" maxlength="40">
+          <button type="button" class="btn" id="btnCatManagerAdd">Anlegen</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" data-close-settings>Schließen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   KONSTANTEN & STATE
+   ============================================================ */
+const LS_KEY = 'controlPanel.v2';
+const LS_KEY_V1 = 'controlPanel.tickets.v1'; // Migration aus v1
+// Workflow: Themenspeicher -> In Arbeit -> Erledigt JF -> Erledigt
+const STATUSES = ['Themenspeicher', 'In Arbeit', 'Erledigt JF', 'Erledigt'];
+const DONE = ['Erledigt JF', 'Erledigt'];
+const PRIO_ORDER = { 'Hoch': 0, 'Mittel': 1, 'Niedrig': 2 };
+const PALETTE = ['#0176D3','#2E844A','#C23934','#9050E9','#06A59A','#B25D00',
+                 '#5867E8','#AA309F','#3BA755','#CA8501','#0D9DDA','#7F2D7B'];
+
+let state = { tickets: [], categories: [], settings: defaultSettings() };
+let view = 'kanban';
+let editingId = null;
+let modalCats = [];                          // Kategorien des offenen Tickets
+let sort = { key: 'deadline', dir: 1 };      // Liste: default Deadline aufsteigend
+let quick = '';                              // Schnellfilter Liste
+let kanbanTodayFilter = false;               // Badge-Filter im Kanban
+let kanbanSortKey = 'deadline';
+let globalCat = '';                          // Globaler Kategorie-Filter (Header)
+
+function defaultSettings() {
+  return { defaultView: 'kanban', kanbanSort: 'deadline', hideDoneAfter: 14,
+           remindDays: 7, compact: false, lastExport: todayStr() };
+}
+
+/* ============================================================
+   LADEN / SPEICHERN / MIGRATION
+   ============================================================ */
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      state.tickets = data.tickets || [];
+      state.categories = data.categories || [];
+      state.settings = Object.assign(defaultSettings(), data.settings || {});
+      migrateTickets(); ensureCategories();
+      return;
+    }
+    const rawV1 = localStorage.getItem(LS_KEY_V1); // v1 -> v2 Migration
+    if (rawV1) {
+      state.tickets = JSON.parse(rawV1);
+      migrateTickets(); ensureCategories(); save();
+      return;
+    }
+  } catch (e) { console.warn('localStorage nicht lesbar:', e); }
+  state.tickets = []; // Leere Version — Daten per JSON-Import laden
+  migrateTickets(); ensureCategories(); save();
+}
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch (e) { alert('Speichern fehlgeschlagen (localStorage voll oder blockiert).'); }
+}
+/* Alte Status umbenennen + Felder ergänzen */
+function migrateTickets() {
+  state.tickets.forEach(t => {
+    if (t.status === 'Offen') t.status = 'Themenspeicher';
+    if (!STATUSES.includes(t.status)) t.status = 'Themenspeicher';
+    if (!Array.isArray(t.cats)) t.cats = [];
+    if (t.status === 'Erledigt' && !t.completedAt) t.completedAt = todayStr();
+  });
+}
+/* Jede in Tickets verwendete Kategorie bekommt einen Listeneintrag + Farbe */
+function ensureCategories() {
+  const known = new Set(state.categories.map(c => c.name));
+  state.tickets.flatMap(t => t.cats).forEach(name => {
+    if (name && !known.has(name)) {
+      state.categories.push({ name, color: PALETTE[state.categories.length % PALETTE.length] });
+      known.add(name);
+    }
+  });
+  state.categories.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+}
+function catColor(name) {
+  const c = state.categories.find(x => x.name === name);
+  return c ? c.color : '#706E6B';
+}
+/* Lesbare Textfarbe auf farbigem Hintergrund */
+function textOn(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lum = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 160 ? '#181818' : '#fff';
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ---------- Datum ---------- */
+function todayStr() {
+  const t = new Date();
+  return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+}
+function weekBounds() { // Mo–So der aktuellen Woche
+  const d = new Date(); const day = (d.getDay() + 6) % 7;
+  const mon = new Date(d); mon.setDate(d.getDate() - day);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const f = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  return [f(mon), f(sun)];
+}
+function fmtDate(iso) { if (!iso) return ''; const [y, m, d] = iso.split('-'); return d + '.' + m + '.' + y; }
+function isOverdue(t) { return !DONE.includes(t.status) && t.deadline < todayStr(); }
+function isToday(t)   { return !DONE.includes(t.status) && t.deadline === todayStr(); }
+function deadlineClass(t) { return isOverdue(t) ? 'overdue' : isToday(t) ? 'due-today' : ''; }
+function doneClass(t) {
+  if (t.status === 'Erledigt') return 'done done-final';   // final: stark gedimmt
+  if (t.status === 'Erledigt JF') return 'done';           // JF: wartet auf Meeting
+  return '';
+}
+/* "Erledigt" nach X Tagen ausblenden (Daten bleiben erhalten) */
+function isHidden(t) {
+  const days = state.settings.hideDoneAfter;
+  if (!days || t.status !== 'Erledigt' || !t.completedAt) return false;
+  return (new Date(todayStr()) - new Date(t.completedAt)) / 86400000 > days;
+}
+function setStatus(t, status) {
+  t.status = status;
+  if (status === 'Erledigt') t.completedAt = todayStr(); else delete t.completedAt;
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function render() {
+  document.body.classList.toggle('compact', !!state.settings.compact);
+  renderHeader();
+  if (view === 'kanban') renderKanban(); else renderList();
+}
+
+function renderHeader() {
+  document.getElementById('todayDate').textContent =
+    new Date().toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const n = state.tickets.filter(isToday).length;
+  const badge = document.getElementById('dueTodayBadge');
+  badge.textContent = n + ' heute fällig';
+  badge.classList.toggle('zero', n === 0);
+  badge.classList.toggle('filter-on', view === 'kanban' ? kanbanTodayFilter : quick === 'today');
+}
+
+/* ---------- Kanban ---------- */
+function renderKanban() {
+  const root = document.getElementById('kanban');
+  root.innerHTML = '';
+  STATUSES.forEach(status => {
+    const col = document.createElement('div');
+    col.className = 'col'; col.dataset.status = status;
+    let items = state.tickets.filter(t => t.status === status && !isHidden(t));
+    if (kanbanTodayFilter) items = items.filter(isToday);
+    if (globalCat) items = items.filter(t => t.cats.includes(globalCat));
+    items.sort((a, b) => kanbanSortKey === 'prio'
+      ? (PRIO_ORDER[a.prio] - PRIO_ORDER[b.prio]) || a.deadline.localeCompare(b.deadline)
+      : a.deadline.localeCompare(b.deadline) || (PRIO_ORDER[a.prio] - PRIO_ORDER[b.prio]));
+    col.innerHTML = '<div class="col-head"><span>' + status + '</span><span class="col-count">' + items.length + '</span></div>';
+    items.forEach(t => col.appendChild(cardEl(t)));
+
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('dragover'); });
+    col.addEventListener('dragleave', () => col.classList.remove('dragover'));
+    col.addEventListener('drop', e => {
+      e.preventDefault(); col.classList.remove('dragover');
+      const t = state.tickets.find(x => x.id === e.dataTransfer.getData('text/plain'));
+      if (t && t.status !== status) { setStatus(t, status); save(); render(); }
+    });
+    root.appendChild(col);
+  });
+}
+
+function cardEl(t) {
+  const el = document.createElement('div');
+  el.className = ['card', 'prio-' + t.prio.toLowerCase(), deadlineClass(t), doneClass(t)].join(' ').trim();
+  el.draggable = true; el.dataset.id = t.id;
+
+  const tags = t.cats.map(c =>
+    '<span class="tag" style="background:' + catColor(c) + ';color:' + textOn(catColor(c)) + '">' + esc(c) + '</span>').join('');
+  el.innerHTML =
+    (isOverdue(t) ? '<span class="escal" title="Überfällig!">!</span>' : '') +
+    '<div class="title">' + esc(t.title) + '</div>' +
+    '<div class="desc">' + esc(t.desc) + '</div>' +
+    '<div class="meta">' +
+      '<span class="pill ' + t.prio.toLowerCase() + '">' + t.prio + '</span>' +
+      '<span class="deadline">📅 ' + fmtDate(t.deadline) + '</span>' + tags +
+    '</div>' +
+    '<div class="card-foot">' +
+      '<select class="quick-status" title="Status ändern">' +
+        STATUSES.map(s => '<option' + (s === t.status ? ' selected' : '') + '>' + s + '</option>').join('') +
+      '</select>' +
+      (t.jira ? '<a class="jira" href="' + esc(t.jira) + '" target="_blank" rel="noopener">Jira ↗</a>' : '') +
+    '</div>';
+
+  el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', t.id); el.classList.add('dragging'); });
+  el.addEventListener('dragend', () => el.classList.remove('dragging'));
+  el.addEventListener('click', e => {
+    if (e.target.closest('a') || e.target.closest('select')) return;
+    openModal(t.id);
+  });
+  el.querySelector('.quick-status').addEventListener('change', e => { setStatus(t, e.target.value); save(); render(); });
+  return el;
+}
+
+/* ---------- Liste ---------- */
+function renderList() {
+  const body = document.getElementById('listBody');
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const fs = document.getElementById('filterStatus').value;
+  const fp = document.getElementById('filterPrio').value;
+  const [mon, sun] = weekBounds();
+
+  let rows = state.tickets.filter(t =>
+    !isHidden(t) &&
+    (!fs || t.status === fs) &&
+    (!fp || t.prio === fp) &&
+    (!globalCat || t.cats.includes(globalCat)) &&
+    (!q || t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q)) &&
+    (quick !== 'today'   || isToday(t)) &&
+    (quick !== 'overdue' || isOverdue(t)) &&
+    (quick !== 'week'    || (!DONE.includes(t.status) && t.deadline >= mon && t.deadline <= sun)) &&
+    (quick !== 'active'  || !DONE.includes(t.status))
+  );
+
+  rows.sort((a, b) => {
+    let v = 0;
+    if (sort.key === 'deadline') v = a.deadline.localeCompare(b.deadline);
+    else if (sort.key === 'prio') v = PRIO_ORDER[a.prio] - PRIO_ORDER[b.prio];
+    else if (sort.key === 'status') v = STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status);
+    else if (sort.key === 'title') v = a.title.localeCompare(b.title, 'de');
+    return v * sort.dir;
+  });
+
+  document.querySelectorAll('th.sortable').forEach(th =>
+    th.querySelector('.arrow').textContent = th.dataset.sort === sort.key ? (sort.dir === 1 ? '▲' : '▼') : '');
+  document.querySelectorAll('#quickChips .chip').forEach(c =>
+    c.classList.toggle('active', c.dataset.q === quick));
+
+  body.innerHTML = '';
+  if (!rows.length) { body.innerHTML = '<tr><td colspan="6" class="empty">Keine Tickets gefunden.</td></tr>'; return; }
+  rows.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.className = ['row', deadlineClass(t), doneClass(t)].join(' ').trim();
+    tr.innerHTML =
+      '<td>' + (isOverdue(t) ? '<span class="escal" style="position:static;display:inline-flex;margin-right:5px">!</span>' : '') +
+        '<strong>' + esc(t.title) + '</strong><br><span style="color:var(--text-weak)">' + esc(t.desc) + '</span></td>' +
+      '<td>' + t.status + '</td>' +
+      '<td><span class="pill ' + t.prio.toLowerCase() + '">' + t.prio + '</span></td>' +
+      '<td><span class="deadline">' + fmtDate(t.deadline) + '</span></td>' +
+      '<td>' + t.cats.map(c => '<span class="tag" style="background:' + catColor(c) + ';color:' + textOn(catColor(c)) + '">' + esc(c) + '</span>').join(' ') + '</td>' +
+      '<td>' + (t.jira ? '<a class="jira" href="' + esc(t.jira) + '" target="_blank" rel="noopener">öffnen ↗</a>' : '') + '</td>';
+    tr.addEventListener('click', e => { if (!e.target.closest('a')) openModal(t.id); });
+    body.appendChild(tr);
+  });
+}
+
+function refreshFilters() {
+  document.getElementById('filterStatus').innerHTML =
+    '<option value="">Status: Alle</option>' + STATUSES.map(s => '<option>' + s + '</option>').join('');
+  const gc = document.getElementById('globalCat');
+  gc.innerHTML = '<option value="">Kategorie: Alle</option>' +
+    state.categories.map(c => '<option' + (c.name === globalCat ? ' selected' : '') + '>' + esc(c.name) + '</option>').join('');
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ============================================================
+   TICKET-MODAL
+   ============================================================ */
+const overlay = document.getElementById('overlay');
+
+function openModal(id) {
+  editingId = id || null;
+  const t = id ? state.tickets.find(x => x.id === id) : null;
+  document.getElementById('modalTitle').textContent = t ? 'Ticket bearbeiten' : 'Neues Ticket';
+  document.getElementById('btnDelete').hidden = !t;
+  document.getElementById('fTitle').value = t ? t.title : '';
+  document.getElementById('fStatus').value = t ? t.status : 'Themenspeicher';
+  document.getElementById('fPrio').value = t ? t.prio : 'Mittel';
+  document.getElementById('fDeadline').value = t ? t.deadline : todayStr();
+  document.getElementById('fDesc').value = t ? t.desc : '';
+  document.getElementById('fJira').value = t ? (t.jira || '') : '';
+  document.getElementById('fNote').value = t ? (t.note || '') : '';
+  modalCats = t ? [...t.cats] : [];
+  renderModalCats();
+  overlay.classList.add('open');
+  document.getElementById('fTitle').focus();
+}
+function closeModal() { overlay.classList.remove('open'); editingId = null; }
+
+/* Kategorie-Chips + Pickliste im Modal */
+function renderModalCats() {
+  document.getElementById('catChips').innerHTML = modalCats.map(c =>
+    '<span class="tag" style="background:' + catColor(c) + ';color:' + textOn(catColor(c)) + '">' + esc(c) +
+    '<button type="button" data-rm="' + esc(c) + '" title="Entfernen">✕</button></span>').join('') ||
+    '<span style="color:var(--text-weak);font-size:11px">Keine Kategorie gewählt</span>';
+  document.getElementById('catSelect').innerHTML = '<option value="">+ aus Liste wählen…</option>' +
+    state.categories.filter(c => !modalCats.includes(c.name))
+      .map(c => '<option>' + esc(c.name) + '</option>').join('');
+  document.querySelectorAll('#catChips [data-rm]').forEach(b =>
+    b.onclick = () => { modalCats = modalCats.filter(x => x !== b.dataset.rm); renderModalCats(); });
+}
+function addCategory(name) { // Neue Kategorie -> Liste (Outlook-Stil), Farbe automatisch
+  name = name.trim();
+  if (!name) return null;
+  if (!state.categories.some(c => c.name === name)) {
+    state.categories.push({ name, color: PALETTE[state.categories.length % PALETTE.length] });
+    state.categories.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    save(); refreshFilters();
+  }
+  return name;
+}
+
+function saveTicket() {
+  const form = document.getElementById('ticketForm');
+  if (!form.reportValidity()) return;
+  const data = {
+    title: document.getElementById('fTitle').value.trim(),
+    prio: document.getElementById('fPrio').value,
+    deadline: document.getElementById('fDeadline').value,
+    desc: document.getElementById('fDesc').value.trim(),
+    jira: document.getElementById('fJira').value.trim(),
+    note: document.getElementById('fNote').value.trim(),
+    cats: [...modalCats]
+  };
+  const newStatus = document.getElementById('fStatus').value;
+  if (editingId) {
+    const t = state.tickets.find(x => x.id === editingId);
+    Object.assign(t, data); setStatus(t, newStatus);
+  } else {
+    const t = Object.assign({ id: uid() }, data); setStatus(t, newStatus);
+    state.tickets.push(t);
+  }
+  save(); closeModal(); render();
+}
+function deleteTicket() {
+  if (!editingId) return;
+  const t = state.tickets.find(x => x.id === editingId);
+  if (confirm('Ticket "' + t.title + '" wirklich löschen?')) {
+    state.tickets = state.tickets.filter(x => x.id !== editingId);
+    save(); closeModal(); render();
+  }
+}
+
+/* ============================================================
+   EINSTELLUNGEN
+   ============================================================ */
+const settingsOverlay = document.getElementById('settingsOverlay');
+
+function openSettings() {
+  const s = state.settings;
+  document.getElementById('setView').value = s.defaultView;
+  document.getElementById('setKanbanSort').value = s.kanbanSort;
+  document.getElementById('setHideDone').value = s.hideDoneAfter;
+  document.getElementById('setRemind').value = s.remindDays;
+  document.getElementById('setCompact').checked = !!s.compact;
+  renderCatManager();
+  settingsOverlay.classList.add('open');
+}
+function closeSettings() {
+  const s = state.settings;
+  s.defaultView = document.getElementById('setView').value;
+  s.kanbanSort = document.getElementById('setKanbanSort').value;
+  s.hideDoneAfter = Math.max(0, +document.getElementById('setHideDone').value || 0);
+  s.remindDays = Math.max(0, +document.getElementById('setRemind').value || 0);
+  s.compact = document.getElementById('setCompact').checked;
+  save(); settingsOverlay.classList.remove('open');
+  refreshFilters(); render();
+}
+
+/* Kategorien verwalten: umbenennen (Tickets folgen), Farbe, löschen */
+function renderCatManager() {
+  const root = document.getElementById('catManager');
+  root.innerHTML = '';
+  if (!state.categories.length) { root.innerHTML = '<span style="color:var(--text-weak)">Noch keine Kategorien.</span>'; return; }
+  state.categories.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    const count = state.tickets.filter(t => t.cats.includes(cat.name)).length;
+    row.innerHTML =
+      '<input type="color" value="' + cat.color + '" title="Farbe">' +
+      '<input type="text" value="' + esc(cat.name) + '" maxlength="40" title="Umbenennen — wirkt auf alle Tickets">' +
+      '<span style="color:var(--text-weak);font-size:11px;white-space:nowrap">' + count + '×</span>' +
+      '<button class="btn btn-danger" title="Löschen">✕</button>';
+    row.querySelector('input[type=color]').addEventListener('change', e => {
+      cat.color = e.target.value; save(); render();
+    });
+    row.querySelector('input[type=text]').addEventListener('change', e => {
+      const newName = e.target.value.trim();
+      if (!newName) { e.target.value = cat.name; return; }
+      if (state.categories.some(c => c !== cat && c.name === newName)) {
+        alert('Kategorie "' + newName + '" existiert bereits.'); e.target.value = cat.name; return;
+      }
+      state.tickets.forEach(t => { t.cats = t.cats.map(c => c === cat.name ? newName : c); });
+      cat.name = newName;
+      state.categories.sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      save(); refreshFilters(); renderCatManager(); render();
+    });
+    row.querySelector('.btn-danger').addEventListener('click', () => {
+      if (!confirm('Kategorie "' + cat.name + '" löschen? Sie wird von ' + count + ' Ticket(s) entfernt.')) return;
+      state.tickets.forEach(t => { t.cats = t.cats.filter(c => c !== cat.name); });
+      state.categories = state.categories.filter(c => c !== cat);
+      save(); refreshFilters(); renderCatManager(); render();
+    });
+    root.appendChild(row);
+  });
+}
+
+/* ============================================================
+   EXPORT / IMPORT
+   ============================================================ */
+function exportJSON() {
+  const blob = new Blob([JSON.stringify({ version: 2, ...state }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'control-panel-export-' + todayStr() + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  state.settings.lastExport = todayStr(); save();
+  document.getElementById('exportBanner').hidden = true;
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (Array.isArray(data)) {            // v1-Format: nur Ticket-Array
+        state.tickets = data;
+      } else if (Array.isArray(data.tickets)) { // v2-Format
+        state.tickets = data.tickets;
+        if (Array.isArray(data.categories)) state.categories = data.categories;
+        if (data.settings) state.settings = Object.assign(defaultSettings(), data.settings);
+      } else throw new Error('Unbekanntes Format');
+      state.tickets = state.tickets.filter(t => t && t.title)
+        .map(t => Object.assign({ id: uid(), cats: [], jira: '', note: '', desc: '', deadline: todayStr(), prio: 'Mittel', status: 'Themenspeicher' }, t));
+      migrateTickets(); ensureCategories(); save(); refreshFilters(); render();
+      alert(state.tickets.length + ' Tickets importiert. Bestehende Daten wurden ersetzt.');
+    } catch (e) { alert('Import fehlgeschlagen: keine gültige JSON-Datei.'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   EVENTS / INIT
+   ============================================================ */
+function setView(v) {
+  view = v;
+  document.getElementById('btnKanban').classList.toggle('active', v === 'kanban');
+  document.getElementById('btnList').classList.toggle('active', v === 'list');
+  document.getElementById('kanban').hidden = v !== 'kanban';
+  document.getElementById('kanbanBar').hidden = v !== 'kanban';
+  document.getElementById('listBar').hidden = v !== 'list';
+  document.getElementById('listWrap').hidden = v !== 'list';
+  render();
+}
+
+document.getElementById('btnKanban').onclick = () => setView('kanban');
+document.getElementById('btnList').onclick = () => setView('list');
+document.getElementById('btnNew').onclick = () => openModal(null);
+document.getElementById('btnSave').onclick = saveTicket;
+document.getElementById('btnDelete').onclick = deleteTicket;
+document.getElementById('btnExport').onclick = exportJSON;
+document.getElementById('btnBannerExport').onclick = exportJSON;
+document.getElementById('btnBannerDismiss').onclick = () => document.getElementById('exportBanner').hidden = true;
+document.getElementById('btnImport').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').addEventListener('change', e => {
+  if (e.target.files[0] && confirm('Import ersetzt ALLE aktuellen Daten. Fortfahren?')) importJSON(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('btnSettings').onclick = openSettings;
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeModal);
+document.querySelectorAll('[data-close-settings]').forEach(b => b.onclick = closeSettings);
+overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) closeSettings(); });
+
+/* Badge "heute fällig": filtert aktuelle Ansicht (Toggle) */
+document.getElementById('dueTodayBadge').onclick = () => {
+  if (view === 'kanban') kanbanTodayFilter = !kanbanTodayFilter;
+  else quick = quick === 'today' ? '' : 'today';
+  render();
+};
+
+/* Kanban-Sortierung */
+document.getElementById('kanbanSort').addEventListener('change', e => { kanbanSortKey = e.target.value; render(); });
+document.getElementById('globalCat').addEventListener('change', e => { globalCat = e.target.value; render(); });
+
+/* Listen-Filter */
+['search', 'filterStatus', 'filterPrio'].forEach(id =>
+  document.getElementById(id).addEventListener('input', () => { renderList(); renderHeader(); }));
+document.querySelectorAll('#quickChips .chip').forEach(c =>
+  c.addEventListener('click', () => { quick = quick === c.dataset.q ? '' : c.dataset.q; renderList(); renderHeader(); }));
+document.querySelectorAll('th.sortable').forEach(th =>
+  th.addEventListener('click', () => {
+    if (sort.key === th.dataset.sort) sort.dir *= -1;
+    else { sort.key = th.dataset.sort; sort.dir = 1; }
+    renderList();
+  }));
+
+/* Kategorien im Ticket-Modal */
+document.getElementById('catSelect').addEventListener('change', e => {
+  if (e.target.value) { modalCats.push(e.target.value); renderModalCats(); }
+});
+document.getElementById('btnCatAdd').onclick = () => {
+  const inp = document.getElementById('catNew');
+  const name = addCategory(inp.value);
+  if (name && !modalCats.includes(name)) modalCats.push(name);
+  inp.value = ''; renderModalCats();
+};
+document.getElementById('catNew').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnCatAdd').click(); }
+});
+document.getElementById('btnCatManagerAdd').onclick = () => {
+  const inp = document.getElementById('catManagerNew');
+  addCategory(inp.value); inp.value = ''; renderCatManager();
+};
+
+/* Keyboard: N = neues Ticket, Esc = Modal schließen */
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  if (e.key === 'Escape') {
+    if (overlay.classList.contains('open')) closeModal();
+    else if (settingsOverlay.classList.contains('open')) closeSettings();
+    return;
+  }
+  if ((e.key === 'n' || e.key === 'N') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)
+      && !overlay.classList.contains('open') && !settingsOverlay.classList.contains('open')) {
+    e.preventDefault(); openModal(null);
+  }
+});
+
+/* Init */
+document.getElementById('fStatus').innerHTML = STATUSES.map(s => '<option>' + s + '</option>').join('');
+load();
+refreshFilters();
+kanbanSortKey = state.settings.kanbanSort;
+document.getElementById('kanbanSort').value = kanbanSortKey;
+/* Export-Erinnerung prüfen */
+if (state.settings.remindDays > 0 &&
+    (new Date(todayStr()) - new Date(state.settings.lastExport || todayStr())) / 86400000 >= state.settings.remindDays) {
+  document.getElementById('exportBanner').hidden = false;
+}
+setView(state.settings.defaultView || 'kanban');
+</script>
+
+<!-- ============================================================
+DEPLOYMENT-OPTIONEN
+
+GITHUB PAGES:
+Repo erstellen, index.html pushen, dann unter Settings → Pages den
+Branch "main" als Quelle wählen. Die App ist danach unter
+https://USERNAME.github.io/REPO/ erreichbar — kostenlos, kein Build nötig.
+
+VERCEL:
+Auf vercel.com das GitHub-Repo importieren oder per "vercel" CLI
+deployen (Framework: "Other"). Vercel erkennt statische Dateien
+automatisch und liefert sie über ein globales CDN aus.
+
+NETLIFY:
+Auf app.netlify.com die index.html per Drag & Drop in den
+"Deploy"-Bereich ziehen — fertig. Alternativ Repo verbinden für
+automatische Deploys bei jedem Push.
+
+WICHTIG: localStorage ist an Browser + Origin gebunden. Beim Wechsel
+von file:// zu einer gehosteten URL startet die App leer — vorher per
+Export sichern, danach importieren. Single-User-Tool: NICHT für
+gleichzeitige Nutzung durch mehrere Mitarbeiter geeignet.
+============================================================ -->
+</body>
+</html>
